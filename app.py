@@ -10,8 +10,10 @@ from PIL import Image, ImageTk
 
 root = Tk()
 
+root.title("FFT normalizer")
 
 frm = ttk.Frame(root, padding=10)
+
 
 frm.grid()
 
@@ -19,8 +21,6 @@ img = Image.open("static/cat.jpg")
 image = ImageTk.PhotoImage(img)
 
 
-
-ttk.Label(frm, text="FFT normalizer").grid(column=0, row=0)
 
 
 
@@ -41,7 +41,7 @@ fft_mask.grid(column=2, row=3)
 
 
 
-ttk.Button(frm, text="Choose File", command= lambda: utils.change_img(img_original)).grid(column=3, row=3)
+ttk.Button(frm, text="Choose File", command= lambda: utils.change_img(img_original)).grid(column=2, row=4)
 
 root.mainloop()
 
