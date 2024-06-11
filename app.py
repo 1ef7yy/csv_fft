@@ -1,4 +1,4 @@
-import app_utils as utils
+from chooseFile import *
 
 from tkinter import *
 from tkinter import ttk
@@ -17,10 +17,8 @@ frm = ttk.Frame(root, padding=10)
 
 frm.grid()
 
-img = Image.open("static/cat.jpg")
+img = Image.open("static/cat.jpg").resize((320, 256))
 image = ImageTk.PhotoImage(img)
-
-
 
 
 
@@ -41,7 +39,9 @@ fft_mask.grid(column=2, row=3)
 
 
 
-ttk.Button(frm, text="Choose File", command= lambda: utils.change_img(img_original)).grid(column=2, row=4)
+
+
+
+ttk.Button(frm, text="Choose File", command= lambda: choose_file(img_original)).grid(column=2, row=4)
 
 root.mainloop()
-
