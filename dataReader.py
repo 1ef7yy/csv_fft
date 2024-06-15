@@ -10,7 +10,7 @@ class DataReader:
     def _get_data(self) -> np.ndarray:
         return np.fromfile(self.filename, dtype=np.uint16)
 
-    def _reshape(self, data: np.ndarray, height: int, width: int) -> np.ndarray:
+    def _reshape_arr(self, data: np.ndarray, height: int, width: int) -> np.ndarray:
         return data.reshape(data.shape[0] // height // width, height, width).astype(
             np.float32
         )
@@ -30,7 +30,7 @@ class DataReader:
     def readFile(self) -> ImageTk.PhotoImage:
         data = self._get_data()
 
-        reshaped = self._reshape(data, 512, 640)
+        reshaped = self._reshape_arr(data, 512, 640)
 
         converted = self._convert_bits(reshaped)
 

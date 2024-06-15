@@ -2,7 +2,6 @@ from chooseFile import *
 
 from tkinter import *
 from tkinter import ttk
-from tkinter import filedialog
 
 from PIL import Image, ImageTk
 

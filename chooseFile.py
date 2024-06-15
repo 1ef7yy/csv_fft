@@ -1,6 +1,7 @@
 import dataReader as dr
-from PIL import Image, ImageTk
 from tkinter import filedialog
+
+from imageHandler import *
 
 
 def choose_file(elem):
@@ -9,6 +10,12 @@ def choose_file(elem):
     if filename:
         reader = dr.DataReader(filename)
         img = reader.readFile()
+
+        imagehandler = ImageHandler(img)
+
+        imagehandler.resize_img(320, 256)
+
+        img = imagehandler.get_img()
 
         elem.configure(image=img)
         elem.image = img
