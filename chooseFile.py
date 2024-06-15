@@ -10,6 +10,5 @@ def choose_file(elem):
         reader = dr.DataReader(filename)
         img = reader.readFile()
 
-        
         elem.configure(image=img)
         elem.image = img

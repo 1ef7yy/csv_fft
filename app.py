@@ -7,7 +7,6 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 
 
-
 root = Tk()
 
 root.title("FFT normalizer")
@@ -19,8 +18,6 @@ frm.grid()
 
 img = Image.open("static/cat.jpg").resize((320, 256))
 image = ImageTk.PhotoImage(img)
-
-
 
 
 img_original = ttk.Label(frm, image=image)
@@ -38,10 +35,8 @@ fft_processing.grid(column=1, row=3)
 fft_mask.grid(column=2, row=3)
 
 
-
-
-
-
-ttk.Button(frm, text="Choose File", command= lambda: choose_file(img_original)).grid(column=2, row=4)
+ttk.Button(frm, text="Choose File", command=lambda: choose_file(img_original)).grid(
+    column=2, row=4
+)
 
 root.mainloop()
