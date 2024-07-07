@@ -7,33 +7,41 @@ class DataReader:
     def __init__(self, filename: str):
         self.filename = filename
 
-    def _get_data(self) -> np.ndarray:
+    def get_data(self) -> np.ndarray:
         return np.fromfile(self.filename, dtype=np.uint16)
 
-    def _reshape_arr(self, data: np.ndarray, height: int, width: int) -> np.ndarray:
+    def reshape_arr(self, data: np.ndarray, height: int, width: int) -> np.ndarray:
         return data.reshape(data.shape[0] // height // width, height, width).astype(
             np.float32
         )
 
-    def _convert_bits(self, data: np.ndarray) -> np.ndarray:
+    def convert_bits(self, data: np.ndarray) -> np.ndarray:
         return np.divide(data, 256)
 
-    def _convert_to_pixels(self, data: np.ndarray) -> np.ndarray:
+    def convert_to_pixels(self, data: np.ndarray) -> np.ndarray:
         return data[0]
 
-    def _arr_to_pil(self, img_arr: np.ndarray) -> Image:
+    def arr_to_pil(self, img_arr: np.ndarray) -> Image:
         return Image.fromarray(img_arr)
 
     def resize(self, img: Image, width: int, height: int) -> None:
         img.resize((width, height), Image.ANTIALIAS)
 
+    def get_pixels(self):
+        return self.convert_to_pixels(
+            self.convert_bits(self.reshape_arr(self.get_data(), 512, 640))
+        )
+
+    def convert_to_pixels(self, data: np.ndarray) -> np.ndarray:
+        return data[0]
+
     def readFile(self) -> ImageTk.PhotoImage:
-        data = self._get_data()
+        data = self.get_data()
 
-        reshaped = self._reshape_arr(data, 512, 640)
+        reshaped = self.reshape_arr(data, 512, 640)
 
-        converted = self._convert_bits(reshaped)
+        converted = self.convert_bits(reshaped)
 
-        pixels = self._convert_to_pixels(converted)
+        pixels = self.convert_to_pixels(converted)
 
-        return ImageTk.PhotoImage(self._arr_to_pil(pixels))
+        return ImageTk.PhotoImage(self.arr_to_pil(pixels))

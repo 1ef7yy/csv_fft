@@ -5,7 +5,6 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 
 
-
 import dataReader as dr
 
 
