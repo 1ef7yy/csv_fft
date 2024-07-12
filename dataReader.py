@@ -45,3 +45,14 @@ class DataReader:
         pixels = self.convert_to_pixels(converted)
 
         return ImageTk.PhotoImage(self.arr_to_pil(pixels))
+
+    def readFileNP(self) -> np.ndarray:
+        data = self.get_data()
+
+        reshaped = self.reshape_arr(data, 512, 640)
+
+        converted = self.convert_bits(reshaped)
+
+        pixels = self.convert_to_pixels(converted)
+
+        return pixels

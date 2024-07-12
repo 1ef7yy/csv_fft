@@ -1,16 +1,32 @@
 import sys
-from PyQt5.QtWidgets import (QMainWindow, QPushButton, QDoubleSpinBox, QSpinBox, QCheckBox, QFormLayout, QComboBox,
-    QAction, QFileDialog, QApplication, QHBoxLayout, QWidget, QGridLayout, QVBoxLayout, QTabWidget, QLayout, QLineEdit,
-    QLabel)
+from PyQt5.QtWidgets import (
+    QMainWindow,
+    QPushButton,
+    QSpinBox,
+    QCheckBox,
+    QFormLayout,
+    QComboBox,
+    QAction,
+    QFileDialog,
+    QApplication,
+    QHBoxLayout,
+    QWidget,
+    QGridLayout,
+    QVBoxLayout,
+    QTabWidget,
+    QLineEdit,
+)
 from PyQt5.QtCore import Qt
 import numpy as np
+
+import csvReader
 import pyqtgraph as pg
-from scipy import signal, fftpack
+from scipy import fftpack
 import cv2 as cv
 from scipy import interpolate
 from numba import jit
 import csv
-import matplotlib.pyplot as plt
+from dataReader import DataReader
 
 w = 320
 h = 256
@@ -25,7 +41,6 @@ footerHeight = 30
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self):
         super().__init__()
         self.flag = False
@@ -33,9 +48,7 @@ class MainWindow(QMainWindow):
         self.workSpace = QWidget(self)
         self.leftTabs = QTabWidget(self.workSpace)
         self.imageProcessingTab = QWidget()
-        self.videoProcessingTab = QWidget()
         self.leftTabs.addTab(self.imageProcessingTab, "Image")
-        self.leftTabs.addTab(self.videoProcessingTab, "Video")
         self.rightTabs = QTabWidget(self.workSpace)
         self.radEqualizer = QWidget()
         self.vertEqualizer = QWidget()
@@ -45,32 +58,42 @@ class MainWindow(QMainWindow):
         self.rightTabs.addTab(self.horEqualizer, "Horizontal")
         self.rightTabs.tabBarClicked.connect(self.changeEqualizer)
         self.footer = QWidget(self)
-        self.aru_checkbox = QCheckBox('ARU', self.footer)
-        self.saveProfileButton = QPushButton('Save profile', self.footer)
-        self.loadProfileButton = QPushButton('Load profile', self.footer)
+        self.aru_checkbox = QCheckBox("ARU", self.footer)
+        self.saveProfileButton = QPushButton("Save profile", self.footer)
+        self.loadProfileButton = QPushButton("Load profile", self.footer)
 
         self.ff_orig, self.ff_centr = 0, 0
 
-        self.x_rad, self.x_vert, self.x_hor = np.linspace(0, 410, 10), \
-                                              np.linspace(0, 320, 10), \
-                                              np.linspace(0, 256, 10)
-        self.y_rad, self.y_vert, self.y_hor = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), \
-                                              np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]), \
-                                              np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+        self.x_rad, self.x_vert, self.x_hor = (
+            np.linspace(0, 410, 10),
+            np.linspace(0, 320, 10),
+            np.linspace(0, 256, 10),
+        )
+        self.y_rad, self.y_vert, self.y_hor = (
+            np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+            np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+            np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+        )
         self.x = [self.x_rad, self.x_vert, self.x_hor]
         self.y = [self.y_rad, self.y_vert, self.y_hor]
 
-        self.f_rad, self.f_vert, self.f_hor = self.createInterpolator(self.x_rad, self.y_rad), \
-                                              self.createInterpolator(self.x_vert, self.y_vert), \
-                                              self.createInterpolator(self.x_hor, self.y_hor)
+        self.f_rad, self.f_vert, self.f_hor = (
+            self.createInterpolator(self.x_rad, self.y_rad),
+            self.createInterpolator(self.x_vert, self.y_vert),
+            self.createInterpolator(self.x_hor, self.y_hor),
+        )
         self.f = [self.f_rad, self.f_vert, self.f_hor]
 
-        self.x_rad_plot, self.x_vert_plot, self.x_hor_plot = np.linspace(0, 410, 100), \
-                                                             np.linspace(0, 320, 100), \
-                                                             np.linspace(0, 256, 100)
-        self.y_rad_plot, self.y_vert_plot, self.y_hor_plot = self.f_rad(self.x_rad_plot), \
-                                                             self.f_vert(self.x_vert_plot), \
-                                                             self.f_hor(self.x_hor_plot)
+        self.x_rad_plot, self.x_vert_plot, self.x_hor_plot = (
+            np.linspace(0, 410, 100),
+            np.linspace(0, 320, 100),
+            np.linspace(0, 256, 100),
+        )
+        self.y_rad_plot, self.y_vert_plot, self.y_hor_plot = (
+            self.f_rad(self.x_rad_plot),
+            self.f_vert(self.x_vert_plot),
+            self.f_hor(self.x_hor_plot),
+        )
         self.x_plot = [self.x_rad_plot, self.x_vert_plot, self.x_hor_plot]
         self.y_plot = [self.y_rad_plot, self.y_vert_plot, self.y_hor_plot]
 
@@ -112,27 +135,31 @@ class MainWindow(QMainWindow):
             spinbox_rad.setRange(0, 1000)
             spinbox_rad.setSingleStep(1)
             spinbox_rad.setValue(self.y_rad[i].astype(np.int32) * 100)
-            spinbox_rad.setStyleSheet('color: black; background-color: white')
+            spinbox_rad.setStyleSheet("color: black; background-color: white")
             spinbox_rad.valueChanged.connect(self.spinboxChanged)
 
             spinbox_vert = QSpinBox()
             spinbox_vert.setRange(0, 1000)
             spinbox_vert.setSingleStep(1)
             spinbox_vert.setValue(self.y_vert[i].astype(np.int32) * 100)
-            spinbox_vert.setStyleSheet('color: black; background-color: white')
+            spinbox_vert.setStyleSheet("color: black; background-color: white")
             spinbox_vert.valueChanged.connect(self.spinboxChanged)
 
             spinbox_hor = QSpinBox()
             spinbox_hor.setRange(0, 1000)
             spinbox_hor.setSingleStep(1)
             spinbox_hor.setValue(self.y_hor[i].astype(np.int32) * 100)
-            spinbox_hor.setStyleSheet('color: black; background-color: white')
+            spinbox_hor.setStyleSheet("color: black; background-color: white")
             spinbox_hor.valueChanged.connect(self.spinboxChanged)
 
             self.spinboxBar_rad.append(spinbox_rad)
             self.spinboxBar_vert.append(spinbox_vert)
             self.spinboxBar_hor.append(spinbox_hor)
-        self.spinboxBar = [self.spinboxBar_rad, self.spinboxBar_vert, self.spinboxBar_hor]
+        self.spinboxBar = [
+            self.spinboxBar_rad,
+            self.spinboxBar_vert,
+            self.spinboxBar_hor,
+        ]
 
         self.processingGrid = CustomGrid(self.imageProcessingTab, 2, 2)
 
@@ -147,38 +174,57 @@ class MainWindow(QMainWindow):
         self.menu.setGeometry(0, 0, leftSideWidth + rightSideWidth, menubarHeight)
         self.createMenu()
         self.menu.show()
-        self.workSpace.setGeometry(0, menubarHeight, leftSideWidth + rightSideWidth, windowHeight)
-        self.workSpace.setStyleSheet('background-color: gray')
+        self.workSpace.setGeometry(
+            0, menubarHeight, leftSideWidth + rightSideWidth, windowHeight
+        )
+        self.workSpace.setStyleSheet("background-color: gray")
         self.workSpace.show()
         self.leftTabs.setGeometry(0, 5, leftSideWidth, windowHeight)
         self.leftTabs.show()
         self.rightTabs.setGeometry(leftSideWidth, 5, rightSideWidth, windowHeight)
         self.rightTabs.show()
-        self.footer.setGeometry(0, menubarHeight + windowHeight, leftSideWidth + rightSideWidth, footerHeight)
-        self.footer.setStyleSheet('background-color: gray')
+        self.footer.setGeometry(
+            0,
+            menubarHeight + windowHeight,
+            leftSideWidth + rightSideWidth,
+            footerHeight,
+        )
+        self.footer.setStyleSheet("background-color: gray")
         self.aru_checkbox.move(10, 0)
-        self.aru_checkbox.setStyleSheet('color: white')
+        self.aru_checkbox.setStyleSheet("color: white")
         self.saveProfileButton.move(leftSideWidth + rightSideWidth - 90, 0)
-        self.saveProfileButton.setStyleSheet('background-color: white')
+        self.saveProfileButton.setStyleSheet("background-color: white")
         self.saveProfileButton.clicked.connect(self.saveProfile)
         self.loadProfileButton.move(leftSideWidth + rightSideWidth - 180, 0)
-        self.loadProfileButton.setStyleSheet('background-color: white')
+        self.loadProfileButton.setStyleSheet("background-color: white")
         self.loadProfileButton.clicked.connect(self.loadProfile)
         self.aru_checkbox.stateChanged.connect(self.isChecked)
         self.setDefault()
-        self.setGeometry(0, 0, leftSideWidth + rightSideWidth, windowHeight + footerHeight + menubarHeight)
-        self.setWindowTitle('Program')
+        self.setGeometry(
+            0,
+            0,
+            leftSideWidth + rightSideWidth,
+            windowHeight + footerHeight + menubarHeight,
+        )
+        self.setWindowTitle("Program")
         self.show()
 
     def showDialog(self):
         self.flag = True
         dialog = QFileDialog()
         dialog.setWindowFlag(Qt.WindowStaysOnTopHint)
-        fname = dialog.getOpenFileName(dialog, 'Open File', '', '(*.data *.jpg *.png)', options=QFileDialog.DontUseNativeDialog)[0]
-        if fname[-5:] == ".data":
-            hw = h * w
-            data = np.fromfile(fname, dtype=np.uint16)[0:hw].reshape(h, w)
-            data = (data // 256).astype(np.uint8)
+        fname = dialog.getOpenFileName(
+            dialog,
+            "Open File",
+            "",
+            "(*.data *.csv *.jpg *.png)",
+            options=QFileDialog.DontUseNativeDialog,
+        )[0]
+        if fname.endswith(".data"):
+            DR = DataReader(fname)
+            data = DR.readFileNP()
+        elif fname.endswith(".csv"):
+            data = csvReader.read_csv(fname)
         else:
             data = cv.imread(fname, 0)
         data = cv.resize(data, (640, 512))
@@ -198,14 +244,24 @@ class MainWindow(QMainWindow):
         for i in range(10):
             val = self.spinboxBar[self.index][i].value()
             self.y[self.index][i] = val / 100
-        self.f[self.index] = self.createInterpolator(self.x[self.index], self.y[self.index])
+        self.f[self.index] = self.createInterpolator(
+            self.x[self.index], self.y[self.index]
+        )
         self.masks[self.index] = self.generateMask(self.f[self.index], self.index)
         self.y_plot[self.index] = self.f[self.index](self.x_plot[self.index])
         self.y_plot[self.index] = self.setZeroLimit(self.y_plot[self.index])
-        self.equalizerGrids[self.index].updateWidget(0, 0, x=self.x_plot[self.index], y=self.y_plot[self.index],
-                                                     x_dots=self.x[self.index], y_dots=self.y[self.index],
-                                     spinboxBar=self.spinboxBar[self.index])
-        self.equalizerGrids[self.index].updateWidget(1, 0, self.masks[self.index], mode="image")
+        self.equalizerGrids[self.index].updateWidget(
+            0,
+            0,
+            x=self.x_plot[self.index],
+            y=self.y_plot[self.index],
+            x_dots=self.x[self.index],
+            y_dots=self.y[self.index],
+            spinboxBar=self.spinboxBar[self.index],
+        )
+        self.equalizerGrids[self.index].updateWidget(
+            1, 0, self.masks[self.index], mode="image"
+        )
         if self.flag == False:
             return
         self.processing()
@@ -215,8 +271,8 @@ class MainWindow(QMainWindow):
         ff_new = fftpack.ifftshift(self.mask) * self.ff_orig
         self.img_new = np.round(np.real(fftpack.ifft2(ff_new)))
         self.img_new = self.img_new / self.img_new.mean() * self.img_orig.mean()
-        #self.img_new = ((self.img_new - self.img_new.min()) * 255 / (self.img_new.max()- self.img_new.min())).astype(np.uint8)
-        #print(self.img_new.min(), self.img_new.max())
+        # self.img_new = ((self.img_new - self.img_new.min()) * 255 / (self.img_new.max()- self.img_new.min())).astype(np.uint8)
+        # print(self.img_new.min(), self.img_new.max())
         if self.aru_checkbox.isChecked():
             self.img_new_current = ARU(self.img_new).processing(self.aru_cycles)
         else:
@@ -238,8 +294,8 @@ class MainWindow(QMainWindow):
     def toImage(img, b=0):
         img = img.astype(np.int32)
         img_out = np.zeros_like(img)
-        for i in range(512):
-            for j in range(640):
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
                 elem = img[i][j] + b
                 if elem <= 0:
                     img_out[i][j] = 0
@@ -264,14 +320,21 @@ class MainWindow(QMainWindow):
 
     def generateMask(self, f, idx):
         if idx == 0:
-            self.Z = f((self.X ** 2 + self.Y ** 2) ** (1 / 2))
+            self.Z = f((self.X**2 + self.Y**2) ** (1 / 2))
         elif idx == 1:
             self.Z = f(self.X)
         else:
             self.Z = f(self.Y)
 
-        self.Z = np.array([[0 if self.Z[i][j] < 0 else self.Z[i][j] for j in range(self.Z.shape[1])] for i in
-                           range(self.Z.shape[0])])
+        self.Z = np.array(
+            [
+                [
+                    0 if self.Z[i][j] < 0 else self.Z[i][j]
+                    for j in range(self.Z.shape[1])
+                ]
+                for i in range(self.Z.shape[0])
+            ]
+        )
         Z1 = self.Z[:, ::-1]
         mask_half = np.concatenate((Z1, self.Z), 1)
         mask = np.concatenate((mask_half[::-1, :], mask_half), 0)
@@ -281,19 +344,19 @@ class MainWindow(QMainWindow):
         return interpolate.Akima1DInterpolator(x, y)
 
     def createMenu(self):
-        openFile = QAction('Open', self.menu)
-        openFile.setShortcut('Ctrl+O')
-        openFile.setStatusTip('Open new File')
+        openFile = QAction("Open", self.menu)
+        openFile.setShortcut("Ctrl+O")
+        openFile.setStatusTip("Open new File")
         openFile.triggered.connect(self.showDialog)
 
-        openSettings = QAction('Settings', self.menu)
+        openSettings = QAction("Settings", self.menu)
         openSettings.triggered.connect(self.settingsWindow.show)
 
-        openFilter = QAction('Filter', self.menu)
+        openFilter = QAction("Filter", self.menu)
         openFilter.triggered.connect(self.filterWindow.show)
 
         menubar = self.menuBar()
-        fileMenu = menubar.addMenu('&File')
+        fileMenu = menubar.addMenu("&File")
         fileMenu.addAction(openFile)
         menubar.addAction(openSettings)
         menubar.addAction(openFilter)
@@ -316,11 +379,17 @@ class MainWindow(QMainWindow):
     def saveProfile(self):
         dialog = QFileDialog()
         dialog.setWindowFlag(Qt.WindowStaysOnTopHint)
-        fname = dialog.getSaveFileName(dialog, 'Save File', '', 'CSV (*.csv)', options=QFileDialog.DontUseNativeDialog)[0]
+        fname = dialog.getSaveFileName(
+            dialog,
+            "Save File",
+            "",
+            "CSV (*.csv)",
+            options=QFileDialog.DontUseNativeDialog,
+        )[0]
         print(fname)
-        if fname[-4:] != '.csv':
-            fname += '.csv'
-        with open(fname, 'w', newline='') as File:
+        if fname[-4:] != ".csv":
+            fname += ".csv"
+        with open(fname, "w", newline="") as File:
             writer = csv.writer(File)
             writer.writerows([self.y_rad, self.y_vert, self.y_hor])
         print(fname)
@@ -330,9 +399,15 @@ class MainWindow(QMainWindow):
     def loadProfile(self):
         dialog = QFileDialog()
         dialog.setWindowFlag(Qt.WindowStaysOnTopHint)
-        fname = dialog.getOpenFileName(dialog, 'Open file', '', 'CSV (*.csv)', options=QFileDialog.DontUseNativeDialog)[0]
+        fname = dialog.getOpenFileName(
+            dialog,
+            "Open file",
+            "",
+            "CSV (*.csv)",
+            options=QFileDialog.DontUseNativeDialog,
+        )[0]
         rows = []
-        with open(fname, 'r', newline='') as File:
+        with open(fname, "r", newline="") as File:
             reader = csv.reader(File)
             for row in reader:
                 rows.append(row)
@@ -370,16 +445,41 @@ class MainWindow(QMainWindow):
         self.processingGrid.updateWidget(1, 1, zeroes, mode="image")
 
         self.radialGrid.addNewWidget(0, 0, pg.PlotWidget(), "Radial Equalizer Curve")
-        self.radialGrid.updateWidget(0, 0, x=self.x_rad_plot, y=self.y_rad_plot, x_dots=self.x_rad, y_dots=self.y_rad,
-                                     spinboxBar=self.spinboxBar_rad)
+        self.radialGrid.updateWidget(
+            0,
+            0,
+            x=self.x_rad_plot,
+            y=self.y_rad_plot,
+            x_dots=self.x_rad,
+            y_dots=self.y_rad,
+            spinboxBar=self.spinboxBar_rad,
+        )
 
-        self.verticalGrid.addNewWidget(0, 0, pg.PlotWidget(), "Vertical Equalizer Curve")
-        self.verticalGrid.updateWidget(0, 0, x=self.x_vert_plot, y=self.y_vert_plot, x_dots=self.x_vert, y_dots=self.y_vert,
-                                     spinboxBar=self.spinboxBar_vert)
+        self.verticalGrid.addNewWidget(
+            0, 0, pg.PlotWidget(), "Vertical Equalizer Curve"
+        )
+        self.verticalGrid.updateWidget(
+            0,
+            0,
+            x=self.x_vert_plot,
+            y=self.y_vert_plot,
+            x_dots=self.x_vert,
+            y_dots=self.y_vert,
+            spinboxBar=self.spinboxBar_vert,
+        )
 
-        self.horizontalGrid.addNewWidget(0, 0, pg.PlotWidget(), "Horizontal Equalizer Curve")
-        self.horizontalGrid.updateWidget(0, 0, x=self.x_hor_plot, y=self.y_hor_plot, x_dots=self.x_hor, y_dots=self.y_hor,
-                                     spinboxBar=self.spinboxBar_hor)
+        self.horizontalGrid.addNewWidget(
+            0, 0, pg.PlotWidget(), "Horizontal Equalizer Curve"
+        )
+        self.horizontalGrid.updateWidget(
+            0,
+            0,
+            x=self.x_hor_plot,
+            y=self.y_hor_plot,
+            x_dots=self.x_hor,
+            y_dots=self.y_hor,
+            spinboxBar=self.spinboxBar_hor,
+        )
 
         self.radialGrid.addNewWidget(1, 0, pg.PlotWidget(), "FFT Mask")
         self.radialGrid.updateWidget(1, 0, self.mask_rad, mode="image")
@@ -411,12 +511,23 @@ class CustomGrid(QGridLayout):
         self.widgets[i][j].setTitle(title)
         self.addWidget(widget, i, j)
 
-    def updateWidget(self, i, j, data=None, mode='plot', x=None, y=None, x_dots=None, y_dots=None, spinboxBar=None):
+    def updateWidget(
+        self,
+        i,
+        j,
+        data=None,
+        mode="plot",
+        x=None,
+        y=None,
+        x_dots=None,
+        y_dots=None,
+        spinboxBar=None,
+    ):
         if mode == "image":
             self.removeWidget(self.widgets[i][j])
             self.widgets[i][j].clear()
             self.widgets[i][j].invertY(True)
-            #self.widgets[i][j].addItem(pg.ImageItem(data.T, levels=[0, 255]))
+            # self.widgets[i][j].addItem(pg.ImageItem(data.T, levels=[0, 255]))
             self.widgets[i][j].addItem(pg.ImageItem(data.T))
             self.addWidget(self.widgets[i][j], i, j)
         elif mode == "plot":
@@ -425,7 +536,7 @@ class CustomGrid(QGridLayout):
             self.widgets[i][j].clear()
             self.widgets[i][j].showGrid(x=True, y=True)
             self.widgets[i][j].plot(x, y)
-            self.widgets[i][j].plot(x_dots, y_dots, pen=None, symbol='o')
+            self.widgets[i][j].plot(x_dots, y_dots, pen=None, symbol="o")
             hbox = QHBoxLayout()
             for k in range(10):
                 spinboxBar[k].setValue(np.round(y_dots[k].astype(np.int32) * 100))
@@ -433,7 +544,7 @@ class CustomGrid(QGridLayout):
             vbox.addWidget(self.widgets[i][j])
             vbox.addLayout(hbox)
             self.addLayout(vbox, i, j)
-        elif mode == 'hist':
+        elif mode == "hist":
             self.removeWidget(self.widgets[i][j])
             self.widgets[i][j].clear()
             self.widgets[i][j].plot(x, y)
@@ -452,7 +563,7 @@ class ARU:
 
     @staticmethod
     @jit(nopython=True)
-    def main_func(image, k, b, x=0.015, y=0.03, N=512*640):
+    def main_func(image, k, b, x=0.015, y=0.03, N=512 * 640):
         N_black, N_white = 0, 0
         processing_image = np.zeros_like(image)
         s = 0
@@ -489,13 +600,13 @@ class SettingsWindow(QWidget):
         self.histWindow = QWidget()
         self.histWindow.setGeometry(100, 150, 400, 500)
         self.histWindow.setWindowFlag(Qt.WindowStaysOnTopHint)
-        self.histWindow.setWindowTitle('Histograms')
+        self.histWindow.setWindowTitle("Histograms")
         self.grid = CustomGrid(self.histWindow, 2, 1)
         self.x = np.arange(256)
         self.original_hist = np.zeros_like(self.x)
         self.processing_hist = np.zeros_like(self.x)
-        self.grid.addNewWidget(0, 0, pg.PlotWidget(), 'Original Hist')
-        self.grid.addNewWidget(1, 0, pg.PlotWidget(), 'Processing Hist')
+        self.grid.addNewWidget(0, 0, pg.PlotWidget(), "Original Hist")
+        self.grid.addNewWidget(1, 0, pg.PlotWidget(), "Processing Hist")
 
         self.aruCyclesField = QSpinBox()
         self.aruCyclesField.setRange(1, 30)
@@ -507,14 +618,14 @@ class SettingsWindow(QWidget):
         flo.addRow("ARU Cycles", self.aruCyclesField)
         flo.addRow("Brightness", self.brightnessField)
 
-        self.closeButton = QPushButton('Close', self.footer)
+        self.closeButton = QPushButton("Close", self.footer)
         self.closeButton.move(420, 3)
         self.closeButton.clicked.connect(self.onCloseButton)
-        self.histButton = QPushButton('Histograms', self.footer)
+        self.histButton = QPushButton("Histograms", self.footer)
         self.histButton.move(5, 3)
         self.histButton.clicked.connect(self.onHistButton)
 
-        self.setWindowTitle('Settings')
+        self.setWindowTitle("Settings")
         self.move(680, 300)
         self.setFixedSize(500, 300)
         self.setWindowFlag(Qt.WindowStaysOnTopHint)
@@ -569,9 +680,9 @@ class FilterWindow(QWidget):
         self.imgWindow = QWidget(self)
         self.imgWindow.setGeometry(0, 0, 620, 450)
         self.imgWindow.setWindowFlag(Qt.WindowStaysOnTopHint)
-        self.imgWindow.setWindowTitle('Filtered Image')
+        self.imgWindow.setWindowTitle("Filtered Image")
         self.grid = CustomGrid(self.imgWindow, 1, 1)
-        self.grid.addNewWidget(0, 0, pg.PlotWidget(), 'Filtered Image')
+        self.grid.addNewWidget(0, 0, pg.PlotWidget(), "Filtered Image")
         zeroes = np.array([[129 for _ in range(w)] for __ in range(h)])
         self.grid.updateWidget(0, 0, zeroes, mode="image")
 
@@ -592,24 +703,24 @@ class FilterWindow(QWidget):
         self.flo.addRow("Row", self.rowField)
         self.flo.addRow("Col", self.colField)
 
-        self.closeButton = QPushButton('Close', self.footer)
+        self.closeButton = QPushButton("Close", self.footer)
         self.closeButton.setGeometry(510, 95, 100, 25)
         self.closeButton.clicked.connect(self.onCloseButton)
-        self.okButton = QPushButton('Ok', self.footer)
+        self.okButton = QPushButton("Ok", self.footer)
         self.okButton.setGeometry(10, 95, 100, 25)
         self.okButton.clicked.connect(self.onOkButton)
         self.denominatorComboBox = QComboBox(self.footer)
-        values = [str(2 ** i) for i in range(1, 13)]
+        values = [str(2**i) for i in range(1, 13)]
         self.denominatorComboBox.addItems(values)
-        self.denominatorComboBox.setStyleSheet('color: black; background-color: white')
+        self.denominatorComboBox.setStyleSheet("color: black; background-color: white")
         self.denominatorComboBox.setGeometry(120, 95, 50, 25)
 
-        '''self.denominatorSpinBox = QSpinBox(self.footer)
+        """self.denominatorSpinBox = QSpinBox(self.footer)
         self.denominatorSpinBox.setRange(2, 1024)
         self.denominatorSpinBox.setStyleSheet('color: black; background-color: white')
-        self.denominatorSpinBox.setGeometry(120, 95, 50, 25)'''
+        self.denominatorSpinBox.setGeometry(120, 95, 50, 25)"""
 
-        self.setWindowTitle('Filter')
+        self.setWindowTitle("Filter")
         self.move(600, 50)
         self.setFixedSize(620, 580)
         self.setWindowFlag(Qt.WindowStaysOnTopHint)
@@ -618,11 +729,15 @@ class FilterWindow(QWidget):
         if self.filter is not None:
             self.filterWindow = QWidget()
             self.filterWindow.setWindowFlag(Qt.WindowStaysOnTopHint)
-            self.filterWindow.setWindowTitle('FPGA Filter')
+            self.filterWindow.setWindowTitle("FPGA Filter")
 
             grid = QGridLayout()
             self.filterWindow.setLayout(grid)
-            positions = [(i, j) for i in range(self.filter_fpga.shape[0]) for j in range(self.filter_fpga.shape[1])]
+            positions = [
+                (i, j)
+                for i in range(self.filter_fpga.shape[0])
+                for j in range(self.filter_fpga.shape[1])
+            ]
             for position in positions:
                 cell = QLineEdit(str(int(self.filter_fpga[position[0]][position[1]])))
                 cell.setFixedWidth(50)
@@ -631,13 +746,17 @@ class FilterWindow(QWidget):
 
             dinomimatorField = QLineEdit(str(self.denominator))
             dinomimatorField.setReadOnly(True)
-            sumField = QLineEdit(str(np.round(np.sum(self.filter_fpga / self.denominator), 5)))
+            sumField = QLineEdit(
+                str(np.round(np.sum(self.filter_fpga / self.denominator), 5))
+            )
             sumField.setReadOnly(True)
             footer = QWidget()
             flo = QFormLayout(footer)
             flo.addRow("Denominator", dinomimatorField)
             flo.addRow("Sum Coefficients", sumField)
-            grid.addWidget(footer, positions[-1][0] + 1, 0, positions[-1][0] + 1, positions[-1][-1])
+            grid.addWidget(
+                footer, positions[-1][0] + 1, 0, positions[-1][0] + 1, positions[-1][-1]
+            )
 
             self.filterWindow.move(160, 180)
             self.filterWindow.show()
@@ -670,7 +789,9 @@ class FilterWindow(QWidget):
         if self.parentWindow.aru_checkbox.isChecked():
             self.img_processed = ARU(self.img).processing(self.parentWindow.aru_cycles)
         else:
-            self.img_processed = self.parentWindow.toImage(self.img, self.parentWindow.brightness)
+            self.img_processed = self.parentWindow.toImage(
+                self.img, self.parentWindow.brightness
+            )
         self.showImg()
 
     def onCloseButton(self):
@@ -694,23 +815,27 @@ class FilterWindow(QWidget):
         filter = self.filter / np.sum(self.filter)
         self.denominator = int(self.denominatorComboBox.currentText())
         self.filter_fpga = self.FPGA_filter(filter, self.denominator)
-        self.img = cv.filter2D(self.parentWindow.img_orig, -1, self.filter_fpga / self.denominator)
+        self.img = cv.filter2D(
+            self.parentWindow.img_orig, -1, self.filter_fpga / self.denominator
+        )
         print(np.sum(self.filter_fpga / self.denominator))
         if self.parentWindow.aru_checkbox.isChecked():
             self.img_processed = ARU(self.img).processing(self.parentWindow.aru_cycles)
         else:
-            self.img_processed = self.parentWindow.toImage(self.img, self.parentWindow.brightness)
+            self.img_processed = self.parentWindow.toImage(
+                self.img, self.parentWindow.brightness
+            )
         self.showImg()
         self.showFilter()
 
     def showImg(self):
-        self.grid.updateWidget(0, 0, data=self.img_processed, mode='image')
+        self.grid.updateWidget(0, 0, data=self.img_processed, mode="image")
         self.imgWindow.show()
 
     def Algorithm1(self, n, m, mask):
         mask = np.real(fftpack.ifft2(fftpack.ifftshift(mask)))
         mask = fftpack.fftshift(mask)
-        filter = mask[256 - n // 2: 257 + n // 2, 320 - m // 2: 321 + m // 2]
+        filter = mask[256 - n // 2 : 257 + n // 2, 320 - m // 2 : 321 + m // 2]
         print(filter / np.sum(filter))
         return np.array(filter)
 
@@ -725,7 +850,7 @@ class FilterWindow(QWidget):
         i = np.round(np.linspace(0, 409, m)).astype(np.int16)
         y_rad = y_plot_rad[i]
         f_rad = self.parentWindow.createInterpolator(x1, y_rad)
-        Z_rad = f_rad((X ** 2 + Y ** 2) ** (1 / 2))
+        Z_rad = f_rad((X**2 + Y**2) ** (1 / 2))
 
         x_plot_vert = np.linspace(0, 320, 320)
         y_plot_vert = self.parentWindow.f[1](x_plot_vert)
@@ -753,8 +878,7 @@ class FilterWindow(QWidget):
         return filter
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = MainWindow()
     sys.exit(app.exec_())
-
