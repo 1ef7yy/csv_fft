@@ -55,4 +55,6 @@ class DataReader:
 
         pixels = self.convert_to_pixels(converted)
 
+        pixels = np.rot90(pixels, 3)
+
         return pixels

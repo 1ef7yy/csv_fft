@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def read_csv(filename):
+def read_csv(filename: str) -> np.ndarray:
     data = np.genfromtxt(filename, delimiter=",")
 
     normalized_data = np.ndarray(data.shape)
