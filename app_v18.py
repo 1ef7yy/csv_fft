@@ -39,6 +39,10 @@ class MainWindow(QMainWindow):
 
         self.orig_img = widgets.OriginalImageWidget(self)
         self.fft_orig = widgets.OriginalFFTWidget(self)
+        self.eqwidget = widgets.EQWidget(self)
+        self.proc_img = widgets.ProcessingImage(self)
+        self.proc_fft = widgets.ProcessingFFT(self)
+        self.fft_mask = widgets.FFTMask(self)
         self.initUI()
 
     def initUI(self):
@@ -50,22 +54,21 @@ class MainWindow(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
-
-
         self.grid = QGridLayout()
         self.central_widget.setLayout(self.grid)
 
-        
         self.grid.addWidget(self.orig_img.getWidget(), 0, 0)
 
         self.grid.addWidget(self.fft_orig.getWidget(), 0, 1)
-        for i in range(2):
-            for j in range(3):
-                if i == 0 and j == 0 or i == 0 and j == 1:
-                    continue
-                self.grid.addWidget(
-                    widgets.OriginalImageWidget(self).getWidget(), i, j
-                )
+
+        self.grid.addWidget(self.eqwidget.getWidget(), 0, 2)
+
+        self.grid.addWidget(self.proc_img.getWidget(), 1, 0)
+
+        self.grid.addWidget(self.proc_fft.getWidget(), 1, 1)
+
+        self.grid.addWidget(self.fft_mask.getWidget(), 1, 2)
+
 
         # Make the grid scalable with size
         self.grid.setColumnStretch(0, 1)
@@ -77,7 +80,7 @@ class MainWindow(QMainWindow):
         self.setDefaults()
 
         self.setWindowTitle("Program")
-        self.setGeometry(100, 100, 1240, 980)
+        self.setGeometry(100, 100, 1920, 1240)
         self.show()
 
     def createMenu(self):
@@ -116,13 +119,7 @@ class MainWindow(QMainWindow):
         self.fft_orig.updateImage(data)
 
 
-    
-    def createInterpolator(self, x, y):
-        return interpolate.Akima1DInterpolator(x, y)
-
-
-    def setDefaults(self):
-        ...
+    def setDefaults(self): ...
 
 
 if __name__ == "__main__":
