@@ -97,7 +97,9 @@ class MainWindow(QMainWindow):
         self.x_plot = [self.x_rad_plot, self.x_vert_plot, self.x_hor_plot]
         self.y_plot = [self.y_rad_plot, self.y_vert_plot, self.y_hor_plot]
 
-        self.X, self.Y = np.meshgrid(np.linspace(0, 320, 320), np.linspace(0, 256, 256))
+        self.X, self.Y = np.meshgrid(
+            np.linspace(0, 320, 320), np.linspace(0, 256, 256)
+        )
         self.Z = np.zeros((256, 320))
 
         self.mask_rad = self.generateMask(self.f_rad, idx=0)

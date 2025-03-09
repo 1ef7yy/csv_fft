@@ -4,10 +4,16 @@ from PyQt5.QtWidgets import (
     QSpinBox,
     QHBoxLayout,
     QVBoxLayout,
-    QGridLayout,
 )
 import pyqtgraph as pg
 import numpy as np
+from scipy import interpolate
+
+currentMode = "radial"
+
+
+def createInterpolator(self, x, y):
+    return interpolate.Akima1DInterpolator(x, y)
 
 
 class OriginalImageWidget(QWidget):
@@ -70,7 +76,8 @@ class EQWidget(QWidget):
         self.widget.setTitle("EQ")
 
         # default mode
-        self.currentMode = "radial"
+        global currentMode
+        currentMode = "radial"
 
         self.radEqualizer = QWidget()
         self.vertEqualizer = QWidget()
@@ -82,7 +89,6 @@ class EQWidget(QWidget):
         self.tabs.addTab(self.vertEqualizer, "Vertical")
         self.tabs.addTab(self.horEqualizer, "Horizontal")
         self.tabs.currentChanged.connect(self.changeEQ)
-
 
         self.radialValues = [1.0] * 10
         self.verticalValues = [1.0] * 10
@@ -108,7 +114,6 @@ class EQWidget(QWidget):
         self.layout.addWidget(self.widget)
         self.layout.addLayout(self.spinboxLayout)
 
-
         self.updatePlot()
 
     def getWidget(self):
@@ -130,19 +135,20 @@ class EQWidget(QWidget):
     def changeHorizontal(self, values: list[int]):
         self.horizontalValues = values
 
-
     def updatePlot(self):
         self.widget.clear()
         x = [i for i in range(10)]
-        vals = [i * 100 for i in self.getValues()[self.currentMode]]
+        global currentMode
+        vals = [i * 100 for i in self.getValues()[currentMode]]
         self.widget.plot(x, vals, pen=self.pen, symbol="o", symbolSize=8)
 
     def changeEQ(self):
-        self.currentMode = ["radial", "vertical", "horizontal"][
+        global currentMode
+        currentMode = ["radial", "vertical", "horizontal"][
             self.tabs.currentIndex()
         ]
 
-        vals = self.getValues()[self.currentMode]
+        vals = self.getValues()[currentMode]
 
         for idx, spinbox in enumerate(self.spinboxes):
             spinbox.setValue(int(vals[idx] * 100))
@@ -154,7 +160,7 @@ class EQWidget(QWidget):
         for spinbox in self.spinboxes:
             values.append(spinbox.value() / 100)
 
-        match self.currentMode:
+        match currentMode:
             case "radial":
                 self.radialValues = values
             case "vertical":
@@ -186,17 +192,28 @@ class FFTMask(QWidget):
     def __init__(self, parent=None):
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setTitle("FFT Mask")
+        self.masks = {
+             "radial": self.generateMask(0, "radial"),
+             "vertical": self.generateMask(0, "vertical"),
+             "horizontal": self.generateMask(0, "horizontal"),
+         }
 
     def getWidget(self):
         return self.plot_widget
 
+    def updatePlot(self):
+        self.plot_widget.clear()
+
+        mask = self.generateMask()
+
+        self.plot_widget.addItem(mask)
 
     def generateMask(self, f, mode):
         if mode == "radial":
             self.Z = f((self.X**2 + self.Y**2) ** (1 / 2))
         elif mode == "vertical":
             self.Z = f(self.X)
-        else:
+        elif mode == "horizontal":
             self.Z = f(self.Y)
 
         self.Z = np.array(
